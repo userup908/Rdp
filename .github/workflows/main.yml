@@ -10,53 +10,69 @@ jobs:
     timeout-minutes: 350   # Just under 6 hours limit
     
     steps:
-      - name: System Preparation
+      - name: Enable RDP Service
         run: |
-          # Disable Windows Defender for performance
-          Set-MpPreference -DisableRealtimeMonitoring $true
+          # Enable RDP service properly
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
           
-          # Enable all performance features
-          powercfg -change -standby-timeout-ac 0
-          powercfg -change -disk-timeout-ac 0
+          # Start RDP service explicitly
+          Set-Service -Name "TermService" -Status Running -StartupType Automatic
+          Set-Service -Name "UmRdpService" -Status Running -StartupType Automatic -ErrorAction SilentlyContinue
+          
+          # Disable NLA for easier connection
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 0
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "SecurityLayer" -value 0
+          
+          # Configure firewall rules specifically
+          New-NetFirewallRule -DisplayName "RDP-Custom" -Direction Inbound -Protocol TCP -LocalPort 3389 -Action Allow -ErrorAction SilentlyContinue
+          
+          Write-Host "✅ RDP Service Enabled and Configured!" -ForegroundColor Green
           
       - name: Create Secure User
         run: |
           # Generate random strong password
-          $password = -join ((33..126) | Get-Random -Count 12 | % {[char]$_})
+          $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 10 | % {[char]$_})
           net user rdpuser "$password" /add
           net localgroup administrators rdpuser /add
-          Write-Host "Password: $password" -ForegroundColor Green
           
-      - name: Fast Setup Tools
+          # Store password for later display
+          $password | Out-File -FilePath "rdp_password.txt" -Encoding ASCII
+          
+          Write-Host "✅ RDP User Created Successfully!" -ForegroundColor Green
+          Write-Host "🔑 PASSWORD: $password" -ForegroundColor Yellow -BackgroundColor DarkBlue
+          Write-Host "📝 Password saved for connection info display" -ForegroundColor Cyan
+          
+      - name: Verify RDP Connection
         run: |
-          # Skip heavy downloads - use lightweight alternatives
-          Write-Host "Setting up fast connection tools..." -ForegroundColor Green
+          # Test RDP service status
+          $rdpService = Get-Service "TermService"
+          Write-Host "RDP Service Status: $($rdpService.Status)" -ForegroundColor Cyan
           
-          # Download only essentials - lightweight versions
-          Invoke-WebRequest -Uri "https://download.avica.com/AvicaLite_v8.0.8.9.exe" -OutFile "Avica.exe" -UseBasicParsing
-          Invoke-WebRequest -Uri "https://github.com/chieunhatnang/VM-QuickConfig/releases/download/1.6.1/VMQuickConfig.exe" -OutFile "VMConfig.exe" -UseBasicParsing
+          # Check if port 3389 is listening
+          $listener = Get-NetTCPConnection -LocalPort 3389 -ErrorAction SilentlyContinue
+          if ($listener) {
+            Write-Host "✅ Port 3389 is LISTENING - RDP Ready!" -ForegroundColor Green
+          } else {
+            Write-Host "❌ Port 3389 NOT listening - RDP Issue!" -ForegroundColor Red
+          }
           
-      - name: Quick Installation
-        run: |
-          # Start Avica installation but DON'T wait for completion
-          Start-Process "Avica.exe" -ArgumentList "/S"
+          # Test network connectivity
+          $ip = (Invoke-RestMethod -Uri 'https://httpbin.org/ip' -TimeoutSec 5).origin
+          Write-Host "Public IP confirmed: $ip" -ForegroundColor Yellow
           
-          # Just copy essential tools to desktop
-          Copy-Item "VMConfig.exe" "C:\Users\Public\Desktop\" -Force
-          
-          # Create desktop shortcuts for built-in browsers
-          $WshShell = New-Object -comObject WScript.Shell
-          $EdgeShortcut = $WshShell.CreateShortcut("C:\Users\Public\Desktop\Edge.lnk")
-          $EdgeShortcut.TargetPath = "msedge.exe"
-          $EdgeShortcut.Save()
-          
-          # Cleanup immediately - don't wait
-          Remove-Item "Avica.exe", "VMConfig.exe" -Force -ErrorAction SilentlyContinue
-          
-          Write-Host "Fast setup completed!" -ForegroundColor Green
+          # Final firewall check
+          $firewallRules = Get-NetFirewallRule -DisplayGroup "Remote Desktop" | Where-Object {$_.Enabled -eq "True"}
+          Write-Host "Active RDP firewall rules: $($firewallRules.Count)" -ForegroundColor Cyan
           
       - name: Display Connection Instructions
         run: |
+          # Get saved password
+          $password = Get-Content "rdp_password.txt" -ErrorAction SilentlyContinue
+          if (-not $password) {
+            $password = "Password_Not_Found_Check_Above"
+          }
+          
           $ip = (Invoke-RestMethod -Uri 'https://httpbin.org/ip' -TimeoutSec 5).origin
           
           Write-Host "
@@ -67,7 +83,7 @@ jobs:
           🌐 IP Address: $ip
           🔌 Port: 3389
           👤 Username: rdpuser  
-          🔑 Password: (shown above)
+          🔑 Password: $password
           
           📱 CONNECTION METHODS:
           
@@ -75,18 +91,24 @@ jobs:
              • Win + R → type 'mstsc' → Enter
              • Computer: $ip
              • Username: rdpuser
-             • Password: (from above)
+             • Password: $password
           
           2️⃣ Command Line:
              • mstsc /v:$ip
           
-          3️⃣ Avica (Installing...):
-             • Download Avica from avica.com
-             • Wait for Avica ID to appear
-             • Enter ID in Avica app
+          3️⃣ Copy-Paste Ready:
+             IP: $ip
+             User: rdpuser
+             Pass: $password
           
           ✅ Server is READY - Connect now!
           " -ForegroundColor Green
+          
+          # Also display separately for easy copy
+          Write-Host "🔥 QUICK COPY:" -ForegroundColor Red
+          Write-Host "IP: $ip" -ForegroundColor White -BackgroundColor Red
+          Write-Host "Username: rdpuser" -ForegroundColor White -BackgroundColor Red  
+          Write-Host "Password: $password" -ForegroundColor White -BackgroundColor Red
           
       - name: Performance Optimization
         run: |
