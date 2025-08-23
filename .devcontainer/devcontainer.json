@@ -1,0 +1,35 @@
+{
+  "name": "Windows Desktop RDP Environment",
+  "image": "mcr.microsoft.com/vscode/devcontainers/base:ubuntu-22.04",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/desktop-lite:1": {
+      "password": "admin123",
+      "webPort": "6080", 
+      "vncPort": "5901"
+    }
+  },
+
+  "forwardPorts": [6080, 5901, 3389],
+  
+  "portsAttributes": {
+    "6080": {
+      "label": "Desktop (Web)",
+      "onAutoForward": "openPreview"
+    },
+    "3389": {
+      "label": "RDP Port",
+      "onAutoForward": "ignore"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.remote-explorer"
+      ]
+    }
+  }
+}
