@@ -27,43 +27,66 @@ jobs:
           net localgroup administrators rdpuser /add
           Write-Host "Password: $password" -ForegroundColor Green
           
-      - name: Install Premium Tools
+      - name: Fast Setup Tools
         run: |
-          # Download high-quality tools only
-          $downloads = @(
-            @{url="https://download.avica.com/AvicaLite_v8.0.8.9.exe"; name="Avica.exe"},
-            @{url="https://dl.google.com/chrome/install/latest/chrome_installer.exe"; name="Chrome.exe"},
-            @{url="https://code.visualstudio.com/sha/download?build=stable&os=win32-x64"; name="VSCode.exe"},
-            @{url="https://github.com/chieunhatnang/VM-QuickConfig/releases/download/1.6.1/VMQuickConfig.exe"; name="VMConfig.exe"}
-          )
+          # Skip heavy downloads - use lightweight alternatives
+          Write-Host "Setting up fast connection tools..." -ForegroundColor Green
           
-          foreach ($item in $downloads) {
-            Write-Host "Downloading $($item.name)..."
-            Invoke-WebRequest -Uri $item.url -OutFile $item.name -UseBasicParsing
-          }
+          # Download only essentials - lightweight versions
+          Invoke-WebRequest -Uri "https://download.avica.com/AvicaLite_v8.0.8.9.exe" -OutFile "Avica.exe" -UseBasicParsing
+          Invoke-WebRequest -Uri "https://github.com/chieunhatnang/VM-QuickConfig/releases/download/1.6.1/VMQuickConfig.exe" -OutFile "VMConfig.exe" -UseBasicParsing
           
-      - name: Silent Installation
+      - name: Quick Installation
         run: |
-          # Install everything silently
-          Start-Process "Chrome.exe" -ArgumentList "/silent", "/install" -Wait
-          Start-Process "Avica.exe" -ArgumentList "/S" -Wait
-          Copy-Item "VMConfig.exe" "C:\Users\Public\Desktop\"
+          # Start Avica installation but DON'T wait for completion
+          Start-Process "Avica.exe" -ArgumentList "/S"
           
-          # Cleanup installers
-          Remove-Item "Chrome.exe", "Avica.exe" -Force -ErrorAction SilentlyContinue
+          # Just copy essential tools to desktop
+          Copy-Item "VMConfig.exe" "C:\Users\Public\Desktop\" -Force
           
-      - name: Network Configuration
+          # Create desktop shortcuts for built-in browsers
+          $WshShell = New-Object -comObject WScript.Shell
+          $EdgeShortcut = $WshShell.CreateShortcut("C:\Users\Public\Desktop\Edge.lnk")
+          $EdgeShortcut.TargetPath = "msedge.exe"
+          $EdgeShortcut.Save()
+          
+          # Cleanup immediately - don't wait
+          Remove-Item "Avica.exe", "VMConfig.exe" -Force -ErrorAction SilentlyContinue
+          
+          Write-Host "Fast setup completed!" -ForegroundColor Green
+          
+      - name: Display Connection Instructions
         run: |
-          # Configure firewall for RDP
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
+          $ip = (Invoke-RestMethod -Uri 'https://httpbin.org/ip' -TimeoutSec 5).origin
           
-          # Get and display connection info
-          $ip = (Invoke-RestMethod -Uri 'https://ipinfo.io/ip').Trim()
-          Write-Host "=== CONNECTION INFO ===" -ForegroundColor Yellow
-          Write-Host "IP Address: $ip" -ForegroundColor Green
-          Write-Host "RDP Port: 3389" -ForegroundColor Green
-          Write-Host "Username: rdpuser" -ForegroundColor Green
+          Write-Host "
+          ╔════════════════════════════════════════╗
+          ║         RDP CONNECTION READY!          ║
+          ╚════════════════════════════════════════╝
+          
+          🌐 IP Address: $ip
+          🔌 Port: 3389
+          👤 Username: rdpuser  
+          🔑 Password: (shown above)
+          
+          📱 CONNECTION METHODS:
+          
+          1️⃣ Windows RDP (Recommended):
+             • Win + R → type 'mstsc' → Enter
+             • Computer: $ip
+             • Username: rdpuser
+             • Password: (from above)
+          
+          2️⃣ Command Line:
+             • mstsc /v:$ip
+          
+          3️⃣ Avica (Installing...):
+             • Download Avica from avica.com
+             • Wait for Avica ID to appear
+             • Enter ID in Avica app
+          
+          ✅ Server is READY - Connect now!
+          " -ForegroundColor Green
           
       - name: Performance Optimization
         run: |
@@ -78,28 +101,22 @@ jobs:
             Set-Service $service -StartupType Disabled -ErrorAction SilentlyContinue
           }
           
-      - name: Smart Keep-Alive
+      - name: Ultra-Fast Keep-Alive
         run: |
-          # Intelligent session management
+          Write-Host "RDP Server is READY! Connect now!" -ForegroundColor Green
+          
+          # Minimal resource keep-alive
           $startTime = Get-Date
-          $maxDuration = 350 * 60 # 350 minutes in seconds
+          $maxDuration = 345 * 60 # 345 minutes
           
           while ((Get-Date).Subtract($startTime).TotalSeconds -lt $maxDuration) {
-            # Light activity every 5 minutes
-            Start-Sleep 300
+            # Ultra light activity - just stay alive
+            Start-Sleep 180  # 3 minute intervals
+            Write-Host "." -NoNewline -ForegroundColor Gray
             
-            # Memory cleanup
-            [System.GC]::Collect()
-            
-            # Check system health
-            $cpu = (Get-WmiObject win32_processor | Measure-Object -property LoadPercentage -Average).Average
-            $memory = Get-WmiObject -Class win32_operatingsystem | Select-Object @{Name = "MemoryUsage"; Expression = {"{0:N2}" -f ((($_.TotalVisibleMemorySize - $_.FreePhysicalMemory)*100)/ $_.TotalVisibleMemorySize) }}
-            
-            Write-Host "System Status - CPU: $cpu% | Memory: $($memory.MemoryUsage)%" -ForegroundColor Cyan
-            
-            # Smart exit before timeout
-            if ((Get-Date).Subtract($startTime).TotalMinutes -gt 345) {
-              Write-Host "Graceful shutdown initiated..." -ForegroundColor Yellow
+            # Clean exit before timeout
+            if ((Get-Date).Subtract($startTime).TotalMinutes -gt 340) {
+              Write-Host "`nSession ending gracefully..." -ForegroundColor Yellow
               break
             }
           }
