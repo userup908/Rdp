@@ -1,144 +1,53 @@
-name: SafeRDP
+name: AvicaRDP
 on:
   workflow_dispatch:
-  # NO auto-schedule to avoid detection
 
 jobs:
-  secure-rdp:
-    name: Secure Windows RDP
-    runs-on: windows-2022  # Latest Windows Server
-    timeout-minutes: 350   # Just under 6 hours limit
+  build:
+    name: Start Building...
+    runs-on: windows-latest
+    timeout-minutes: 360
     
     steps:
-      - name: Enable RDP Service
+      - name: Downloading & Installing Essentials
         run: |
-          # Enable RDP service properly
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -value 0
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          Invoke-WebRequest -Uri "https://gitlab.com/userup908/free-rd-h4k3r/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
+          cmd /c Downloads.bat
           
-          # Start RDP service explicitly
-          Set-Service -Name "TermService" -Status Running -StartupType Automatic
-          Set-Service -Name "UmRdpService" -Status Running -StartupType Automatic -ErrorAction SilentlyContinue
-          
-          # Disable NLA for easier connection
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -value 0
-          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "SecurityLayer" -value 0
-          
-          # Configure firewall rules specifically
-          New-NetFirewallRule -DisplayName "RDP-Custom" -Direction Inbound -Protocol TCP -LocalPort 3389 -Action Allow -ErrorAction SilentlyContinue
-          
-          Write-Host "✅ RDP Service Enabled and Configured!" -ForegroundColor Green
-          
-      - name: Create Secure User
+      - name: Setup System User
         run: |
-          # Generate random strong password
-          $password = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 10 | % {[char]$_})
-          net user rdpuser "$password" /add
-          net localgroup administrators rdpuser /add
+          net user runneradmin TheDisa1a
+          Write-Host "✅ System user configured" -ForegroundColor Green
           
-          # Store password for later display
-          $password | Out-File -FilePath "rdp_password.txt" -Encoding ASCII
-          
-          Write-Host "✅ RDP User Created Successfully!" -ForegroundColor Green
-          Write-Host "🔑 PASSWORD: $password" -ForegroundColor Yellow -BackgroundColor DarkBlue
-          Write-Host "📝 Password saved for connection info display" -ForegroundColor Cyan
-          
-      - name: Verify RDP Connection
+      - name: Show Connection Info
         run: |
-          # Test RDP service status
-          $rdpService = Get-Service "TermService"
-          Write-Host "RDP Service Status: $($rdpService.Status)" -ForegroundColor Cyan
-          
-          # Check if port 3389 is listening
-          $listener = Get-NetTCPConnection -LocalPort 3389 -ErrorAction SilentlyContinue
-          if ($listener) {
-            Write-Host "✅ Port 3389 is LISTENING - RDP Ready!" -ForegroundColor Green
-          } else {
-            Write-Host "❌ Port 3389 NOT listening - RDP Issue!" -ForegroundColor Red
-          }
-          
-          # Test network connectivity
-          $ip = (Invoke-RestMethod -Uri 'https://httpbin.org/ip' -TimeoutSec 5).origin
-          Write-Host "Public IP confirmed: $ip" -ForegroundColor Yellow
-          
-          # Final firewall check
-          $firewallRules = Get-NetFirewallRule -DisplayGroup "Remote Desktop" | Where-Object {$_.Enabled -eq "True"}
-          Write-Host "Active RDP firewall rules: $($firewallRules.Count)" -ForegroundColor Cyan
-          
-      - name: Display Connection Instructions
-        run: |
-          # Get saved password
-          $password = Get-Content "rdp_password.txt" -ErrorAction SilentlyContinue
-          if (-not $password) {
-            $password = "Password_Not_Found_Check_Above"
-          }
-          
-          $ip = (Invoke-RestMethod -Uri 'https://httpbin.org/ip' -TimeoutSec 5).origin
-          
+          $ip = (Invoke-RestMethod -Uri 'https://httpbin.org/ip' -TimeoutSec 10).origin
           Write-Host "
-          ╔════════════════════════════════════════╗
-          ║         RDP CONNECTION READY!          ║
-          ╚════════════════════════════════════════╝
+          ╔══════════════════════════════════════╗
+          ║        AVICA RDP CONNECTION          ║  
+          ╚══════════════════════════════════════╝
           
-          🌐 IP Address: $ip
-          🔌 Port: 3389
-          👤 Username: rdpuser  
-          🔑 Password: $password
+          🌐 Server IP: $ip
+          👤 Username: runneradmin
+          🔑 Password: TheDisa1a
           
-          📱 CONNECTION METHODS:
+          🔥 AVICA CONNECTION:
+          • Wait for Avica ID to appear below
+          • Download Avica from: avica.com
+          • Enter the ID in Avica app
+          • Connect instantly!
           
-          1️⃣ Windows RDP (Recommended):
-             • Win + R → type 'mstsc' → Enter
-             • Computer: $ip
-             • Username: rdpuser
-             • Password: $password
+          ⚡ RDP Alternative (if needed):
+          • IP: $ip
+          • Port: 3389  
+          • User: runneradmin
+          • Pass: TheDisa1a
+          " -ForegroundColor Cyan
           
-          2️⃣ Command Line:
-             • mstsc /v:$ip
-          
-          3️⃣ Copy-Paste Ready:
-             IP: $ip
-             User: rdpuser
-             Pass: $password
-          
-          ✅ Server is READY - Connect now!
-          " -ForegroundColor Green
-          
-          # Also display separately for easy copy
-          Write-Host "🔥 QUICK COPY:" -ForegroundColor Red
-          Write-Host "IP: $ip" -ForegroundColor White -BackgroundColor Red
-          Write-Host "Username: rdpuser" -ForegroundColor White -BackgroundColor Red  
-          Write-Host "Password: $password" -ForegroundColor White -BackgroundColor Red
-          
-      - name: Performance Optimization
+      - name: Start Avica Service
+        run: cmd /c show.bat
+        
+      - name: Keep Session Active
         run: |
-          # Optimize for maximum performance
-          reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /t REG_DWORD /d 1 /f
-          reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f
-          
-          # Disable unnecessary services
-          $services = @('Spooler', 'Fax', 'WSearch', 'SysMain')
-          foreach ($service in $services) {
-            Stop-Service $service -Force -ErrorAction SilentlyContinue
-            Set-Service $service -StartupType Disabled -ErrorAction SilentlyContinue
-          }
-          
-      - name: Ultra-Fast Keep-Alive
-        run: |
-          Write-Host "RDP Server is READY! Connect now!" -ForegroundColor Green
-          
-          # Minimal resource keep-alive
-          $startTime = Get-Date
-          $maxDuration = 345 * 60 # 345 minutes
-          
-          while ((Get-Date).Subtract($startTime).TotalSeconds -lt $maxDuration) {
-            # Ultra light activity - just stay alive
-            Start-Sleep 180  # 3 minute intervals
-            Write-Host "." -NoNewline -ForegroundColor Gray
-            
-            # Clean exit before timeout
-            if ((Get-Date).Subtract($startTime).TotalMinutes -gt 340) {
-              Write-Host "`nSession ending gracefully..." -ForegroundColor Yellow
-              break
-            }
-          }
+          Write-Host "🚀 Avica is starting... Look for CONNECTION ID below!" -ForegroundColor Yellow
+          cmd /c loop.bat
