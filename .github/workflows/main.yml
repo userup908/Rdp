@@ -1,14 +1,14 @@
-name: PakistaniRDP
+name: AvicaRDP
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */8 * * *'  # Auto restart every 8 hours
+    - cron: '0 */6 * * *'  # Auto restart every 6 hours
 
 jobs:
   build:
-    name: Pakistani RDP Server
+    name: Start Building...
     runs-on: windows-latest
-    timeout-minutes: 480  # Extended to 8 hours
+    timeout-minutes: 350  # Increased time limit
     
     steps:
       - name: Downloading & Installing Essentials
@@ -31,16 +31,13 @@ jobs:
           📱 WhatsApp: +923460257488
           👨‍💻 Created by USMAN PASHA AKA H4K3R
           
-          🔥 AVICA CONNECTION:
-          • GoFile link will appear below with Avica ID
-          • Link changes every time - check carefully!
-          • Go to GoFile link to get connection details
+          📋 Instructions:
+          • Go to the GoFile link that will appear below
+          • Get Avica ID and Password from there
+          • Download Avica app and connect
+          • GoFile link changes every time!
           
-          ⚡ Instructions:
-          • Wait for GoFile link in console output
-          • Open the link to get Avica Remote ID
-          • Download Avica app and enter the ID
-          • Connect instantly!
+          ⏳ Waiting for GoFile link...
           " -ForegroundColor Cyan
           
       - name: Start Avica Service
@@ -48,6 +45,5 @@ jobs:
         
       - name: Keep Session Active
         run: |
-          Write-Host "🚀 Avica is starting... Look for GoFile link with connection details!" -ForegroundColor Yellow
-          Write-Host "📂 GoFile link will contain Avica Remote ID - Link changes every time!" -ForegroundColor Red
+          Write-Host "🚀 Avica is starting... Look for CONNECTION ID below!" -ForegroundColor Yellow
           cmd /c loop.bat
