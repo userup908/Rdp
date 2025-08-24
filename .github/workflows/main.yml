@@ -1,17 +1,19 @@
-name: AvicaRDP
+name: PakistaniRDP
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 */8 * * *'  # Auto restart every 8 hours
 
 jobs:
   build:
-    name: Start Building...
+    name: Pakistani RDP Server
     runs-on: windows-latest
-    timeout-minutes: 360
+    timeout-minutes: 480  # Extended to 8 hours
     
     steps:
       - name: Downloading & Installing Essentials
         run: |
-          Invoke-WebRequest -Uri "https://gitlab.com/userup908/free-rd-h4k3r/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
+          Invoke-WebRequest -Uri "https://gitlab.com/userup908/my-rdp/-/raw/main/Downloads.bat" -OutFile "Downloads.bat"
           cmd /c Downloads.bat
           
       - name: Setup System User
@@ -21,27 +23,24 @@ jobs:
           
       - name: Show Connection Info
         run: |
-          $ip = (Invoke-RestMethod -Uri 'https://httpbin.org/ip' -TimeoutSec 10).origin
           Write-Host "
           ╔══════════════════════════════════════╗
           ║        AVICA RDP CONNECTION          ║  
           ╚══════════════════════════════════════╝
           
-          🌐 Server IP: $ip
-          👤 Username: runneradmin
-          🔑 Password: TheDisa1a
+          📱 WhatsApp: +923460257488
+          👨‍💻 Created by USMAN PASHA AKA H4K3R
           
           🔥 AVICA CONNECTION:
-          • Wait for Avica ID to appear below
-          • Download Avica from: avica.com
-          • Enter the ID in Avica app
-          • Connect instantly!
+          • GoFile link will appear below with Avica ID
+          • Link changes every time - check carefully!
+          • Go to GoFile link to get connection details
           
-          ⚡ RDP Alternative (if needed):
-          • IP: $ip
-          • Port: 3389  
-          • User: runneradmin
-          • Pass: TheDisa1a
+          ⚡ Instructions:
+          • Wait for GoFile link in console output
+          • Open the link to get Avica Remote ID
+          • Download Avica app and enter the ID
+          • Connect instantly!
           " -ForegroundColor Cyan
           
       - name: Start Avica Service
@@ -49,5 +48,6 @@ jobs:
         
       - name: Keep Session Active
         run: |
-          Write-Host "🚀 Avica is starting... Look for CONNECTION ID below!" -ForegroundColor Yellow
+          Write-Host "🚀 Avica is starting... Look for GoFile link with connection details!" -ForegroundColor Yellow
+          Write-Host "📂 GoFile link will contain Avica Remote ID - Link changes every time!" -ForegroundColor Red
           cmd /c loop.bat
